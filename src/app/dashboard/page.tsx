@@ -1,8 +1,14 @@
 'use client';
 
-import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs';
+// Dashboard route. Shows content to signed-in users.
+// A small gate below ensures users have completed onboarding.
 
-// Helper component for dashboard content
+import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
+import { useUser } from '@clerk/nextjs';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+// The actual dashboard UI
 function DashboardContent() {
   return (
     <div className="p-4">
@@ -12,12 +18,12 @@ function DashboardContent() {
   );
 }
 
-// Helper component for sign-in content
+// What to show if the user is signed out
 function SignInContent() {
   return (
     <div className="p-4 space-y-3">
       <p>You must be signed in to view this page.</p>
-      <SignInButton mode="modal" forceRedirectUrl="/dashboard" />
+      <SignInButton mode="modal" forceRedirectUrl="/post-auth" />
     </div>
   );
 }
@@ -27,11 +33,30 @@ export default function Dashboard() {
   return (
     <>
       <SignedIn>
-        <DashboardContent />
+        {/* Only show dashboard to users who finished onboarding */}
+        <DashboardGate>
+          <DashboardContent />
+        </DashboardGate>
       </SignedIn>
       <SignedOut>
         <SignInContent />
       </SignedOut>
     </>
   );
+}
+
+// Redirect users back to onboarding until they have a full name (or confirmation flag)
+function DashboardGate({ children }: { children: React.ReactNode }) {
+  const { user, isLoaded } = useUser();
+  const router = useRouter();
+  useEffect(() => {
+    if (!isLoaded) return;
+    const nameConfirmed = user?.unsafeMetadata?.["nameConfirmed"] === true;
+    const hasFullName = Boolean(user?.firstName && user?.lastName);
+    if (!nameConfirmed && !hasFullName) {
+      router.replace('/onboarding');
+    }
+  }, [isLoaded, user, router]);
+
+  return <>{children}</>;
 }

@@ -1,5 +1,7 @@
 'use client';
 
+// Example page under /auth. Shows different content for signed-in/out users.
+
 import { SignedIn, SignedOut, SignInButton, UserButton, } from '@clerk/nextjs';
 import { redirect } from 'next/navigation';
 
@@ -18,11 +20,12 @@ function SignInContent() {
   return (
     <div className="p-4 space-y-3">
       <p>You must be signed in to view this page.</p>
-      <SignInButton mode="modal" forceRedirectUrl="/dashboard" />
+      <SignInButton mode="modal" forceRedirectUrl="/post-auth" />
     </div>
   );
 }
 
+// Example redirect function (not used)
 function FirstOnboard() {
   redirect('/onboarding'); 
   return null;
