@@ -56,6 +56,7 @@ function Questionnaire({ sectionKey }: { sectionKey: SectionKey }) {
     "Vegetarian",
   ];
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
+  const [userTags, setUserTags] = React.useState<string[]>([]);
   const [customTag, setCustomTag] = React.useState<string>("");
 
   const [saving, setSaving] = React.useState(false);
@@ -72,7 +73,17 @@ function Questionnaire({ sectionKey }: { sectionKey: SectionKey }) {
     if (section.rentMax != null) setRentMax(Number(section.rentMax));
     if (section.area) setArea(String(section.area));
     if (section.moveInDays != null) setMoveInDays(String(section.moveInDays));
-    if (Array.isArray(section.tags)) setSelectedTags(section.tags as string[]);
+    if (Array.isArray(section.tags)) {
+      const tags: string[] = section.tags as string[];
+      setSelectedTags(tags);
+      const lowerDefaults = DEFAULT_TAGS.map((d) => d.toLowerCase());
+      const extras = Array.from(
+        new Set(
+          tags.filter((t) => !lowerDefaults.includes(String(t).toLowerCase()))
+        )
+      );
+      setUserTags(extras);
+    }
   }, [isLoaded, user, sectionKey]);
 
   // tags helpers
@@ -82,9 +93,26 @@ function Questionnaire({ sectionKey }: { sectionKey: SectionKey }) {
     );
   }
   function addCustomTag() {
-    const t = customTag.trim();
-    if (!t) return;
-    if (!selectedTags.includes(t)) setSelectedTags((cur) => [...cur, t]);
+    const raw = customTag.trim();
+    if (!raw) return;
+    // Avoid duplicates (case-insensitive) and align to canonical default label if matched
+    const foundDefault = DEFAULT_TAGS.find(
+      (d) => d.toLowerCase() === raw.toLowerCase()
+    );
+    if (foundDefault) {
+      setSelectedTags((cur) =>
+        cur.includes(foundDefault) ? cur : [...cur, foundDefault]
+      );
+      setCustomTag("");
+      return;
+    }
+
+    const existsUser = userTags.some((t) => t.toLowerCase() === raw.toLowerCase());
+    const canonical = existsUser
+      ? userTags.find((t) => t.toLowerCase() === raw.toLowerCase())!
+      : raw;
+    if (!existsUser) setUserTags((cur) => [...cur, canonical]);
+    setSelectedTags((cur) => (cur.includes(canonical) ? cur : [...cur, canonical]));
     setCustomTag("");
   }
 
@@ -123,7 +151,7 @@ function Questionnaire({ sectionKey }: { sectionKey: SectionKey }) {
 
       await user.update({ unsafeMetadata: nextMeta });
       setSaved(true);
-      router.replace("/important");
+      router.replace("/completed");
     } catch (err) {
       setError("Couldn’t save your answers. Please try again.");
     } finally {
@@ -340,6 +368,24 @@ function Questionnaire({ sectionKey }: { sectionKey: SectionKey }) {
             </button>
           ))}
         </div>
+        {userTags.length > 0 && (
+          <div className="flex flex-wrap gap-3 mt-1">
+            {userTags.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => toggleTag(t)}
+                className={`px-3 py-1 rounded-full border text-sm ${
+                  selectedTags.includes(t)
+                    ? "bg-[#6c47ff] text-white border-[#6c47ff]"
+                    : ""
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
         {selectedTags.length > 0 && (
           <div className="text-sm text-gray-400">
             Selected tags: {selectedTags.join(", ")}
